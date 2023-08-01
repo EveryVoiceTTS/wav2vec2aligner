@@ -24,11 +24,15 @@ def cli():
 @click.argument("audio_path")
 @click.argument("text_path")
 @click.option("--sample-rate", default=16000, help="The target sample rate for the model.")
+@click.option("--word-padding", default=0, help="How many frames to pad around words.")
+@click.option("--sentence-padding", default=0, help="How many frames to pad around sentences (additive with word-padding).")
 @cli.command()
 def align_single(
     text_path: Path(exists=True, file_okay=True, dir_okay=False),
     audio_path: Path(exists=True, file_okay=True, dir_okay=False),
     sample_rate: int = 16000,
+    word_padding: int = 0,
+    sentence_padding: int = 0
 ):
     print("loading model...")
     model = load_model()
@@ -44,7 +48,7 @@ def align_single(
     transducer = create_transducer(''.join(sentence_list))
     text_hash = TextHash(sentence_list, transducer)
     print("performing alignment")
-    characters, words, sentences, num_frames = align_speech_file(wav, text_hash, model)
+    characters, words, sentences, num_frames = align_speech_file(wav, text_hash, model, word_padding, sentence_padding)
     print("creating textgrid")
     waveform_to_frame_ratio = wav.size(1) / num_frames
     tg = create_text_grid_from_segments(

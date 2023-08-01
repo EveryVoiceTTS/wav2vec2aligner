@@ -181,7 +181,7 @@ def load_model():
     return model
 
 
-def align_speech_file(audio, text_hash, model):
+def align_speech_file(audio, text_hash, model, word_padding, sentence_padding):
     # Construct the dictionary
     # '@' represents the OOV token
     # <pad> and </s> are fairseq's legacy tokens, which're not used.
@@ -189,7 +189,7 @@ def align_speech_file(audio, text_hash, model):
     
 
     emission = get_emission(model, audio.to(DEVICE))
-    segments, words, sentences = compute_alignments(text_hash, DICTIONARY, emission)
+    segments, words, sentences = compute_alignments(text_hash, DICTIONARY, emission, word_padding=word_padding, sentence_padding=sentence_padding)
     return segments, words, sentences, emission.size(1)
 
 
@@ -201,7 +201,7 @@ def get_emission(model, waveform):
         return torch.log_softmax(emission, dim=-1)
 
 
-def compute_alignments(transcript_hash, dictionary, emission):
+def compute_alignments(transcript_hash, dictionary, emission, word_padding=0, sentence_padding=0):
     all_words = [
         v["text"].output_string for k, v in transcript_hash.items() if "w" in k
     ]
@@ -274,7 +274,7 @@ def compute_alignments(transcript_hash, dictionary, emission):
                 break
         if end is not None:
             transcript_hash[current_word["key"]] = Segment(
-                current_word["text"].input_string, start, end, sum(scores) / len(scores)
+                current_word["text"].input_string, start - word_padding, end + word_padding, sum(scores) / len(scores)
             )
 
     key_pattern = re.compile(
@@ -298,8 +298,8 @@ def compute_alignments(transcript_hash, dictionary, emission):
         if end is not None:
             transcript_hash[sentence] = Segment(
                 transcript_hash[sentence]["text"].input_string,
-                start,
-                end,
+                start - sentence_padding,
+                end + sentence_padding,
                 sum(scores) / len(scores),
             )
     words = [v for k, v in transcript_hash.items() if "w" in k]

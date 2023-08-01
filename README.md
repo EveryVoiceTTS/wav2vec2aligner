@@ -1,6 +1,6 @@
-# Wav2Vec2 Aligner
+# Language-level Zero-Shot Wav2Vec2 Aligner with input preservation
 
-An aligner based on Wav2Vec2. Most of the code is from [this tutorial](https://pytorch.org/audio/main/tutorials/forced_alignment_for_multilingual_data_tutorial.html) but turned into a package with a command line interface and a method for exporting to TextGrid.
+An aligner based on Wav2Vec2. Most of the code is from [this tutorial](https://pytorch.org/audio/main/tutorials/forced_alignment_for_multilingual_data_tutorial.html) but uses [g2p](https://github.com/roedoejet/g2p) for preserving the input, turned into a package with a command line interface with a method for exporting to TextGrid.
 
 ## Install
 

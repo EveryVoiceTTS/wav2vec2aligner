@@ -9,7 +9,4 @@ Create a conda env with those nightly installs, then `pip install -e .`
 
 ## Usage
 
-`CUDA_VISIBLE_DEVICES=0 align align-single sample.txt sample.wav` but sample.txt has to be passed through `romanize.sh` first. 
-
-## TODO
-Possibly just use an alternative model and g2p for index preserving.
+`CUDA_VISIBLE_DEVICES=0 align align-single sample.txt sample.wav` which will output a [Praat TextGrid](https://www.fon.hum.uva.nl/praat/) with the segment, word, and sentence level alignments.

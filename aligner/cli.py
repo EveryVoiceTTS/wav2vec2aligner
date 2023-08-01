@@ -23,7 +23,7 @@ def cli():
 
 @click.argument("audio_path")
 @click.argument("text_path")
-@click.option("--sample-rate", default=16000, help="The target sample rate.")
+@click.option("--sample-rate", default=16000, help="The target sample rate for the model.")
 @cli.command()
 def align_single(
     text_path: Path(exists=True, file_okay=True, dir_okay=False),
@@ -39,10 +39,11 @@ def align_single(
         fn, ext = os.path.splitext(audio_path)
         audio_path = fn + f"-{sample_rate}" + ext
         torchaudio.save(audio_path, wav, sample_rate)
-    print("performing alignment")
+    print("processing text")
     sentence_list = read_text(text_path)
     transducer = create_transducer(''.join(sentence_list))
     text_hash = TextHash(sentence_list, transducer)
+    print("performing alignment")
     characters, words, sentences, num_frames = align_speech_file(wav, text_hash, model)
     print("creating textgrid")
     waveform_to_frame_ratio = wav.size(1) / num_frames

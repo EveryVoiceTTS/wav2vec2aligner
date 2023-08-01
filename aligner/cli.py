@@ -4,8 +4,12 @@ from pathlib import Path
 import click
 import torchaudio
 
-from .utils import (align_speech_file, create_text_grid_from_segments,
-                    load_model, normalize_uroman)
+from .utils import (
+    align_speech_file,
+    create_text_grid_from_segments,
+    load_model,
+    process_text,
+)
 
 
 @click.group()
@@ -34,13 +38,12 @@ def align_single(
         audio_path = fn + f"-{sample_rate}" + ext
         torchaudio.save(audio_path, wav, sample_rate)
     print("performing alignment")
-    with open(text_path) as f:
-        text = "| ".join([normalize_uroman(x) for x in f])
-    _, ws, ss, num_frames = align_speech_file(wav, text, model)
+    text_hash = process_text(text_path)
+    segments, words, sentences, num_frames = align_speech_file(wav, text_hash, model)
     print("creating textgrid")
     waveform_to_frame_ratio = wav.size(1) / num_frames
     tg = create_text_grid_from_segments(
-        ss, "sentence", waveform_to_frame_ratio, sample_rate=sample_rate
+        sentences, "sentences", waveform_to_frame_ratio, sample_rate=sample_rate
     )
     tg_path = Path(audio_path).with_suffix(".TextGrid")
     print(f"writing file to {tg_path}")

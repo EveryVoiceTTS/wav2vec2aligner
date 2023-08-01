@@ -2,6 +2,9 @@ import re
 
 import matplotlib.pyplot as plt
 import torch
+from g2p import make_g2p
+from g2p.mappings import Mapping
+from g2p.transducer import CompositeTransducer, Transducer
 from pympi.Praat import TextGrid
 from torchaudio.functional import forced_align
 from torchaudio.models import wav2vec2_model
@@ -9,6 +12,39 @@ from torchaudio.models import wav2vec2_model
 from .classes import Frame, Segment
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+punctuation_transducer = Transducer(
+    Mapping(
+        [{"in": "-", "out": ""}, {"in": ",", "out": ""}],
+        in_lang="und-ascii",
+        out_lang="uroman",
+        case_sensitive=False,
+    )
+)
+und_transducer = make_g2p("und", "und-ascii")
+und_transducer.__setattr__("norm_form", "NFC")
+UND_G2P = CompositeTransducer([und_transducer, punctuation_transducer])
+
+
+class TextHash(dict):
+    def __init__(self, sentence_list):
+        data = {}
+        for i, sentence in enumerate(sentence_list):
+            stripped_sentence = sentence.strip()
+            if stripped_sentence:
+                data[f"s{i}"] = {"text": UND_G2P(stripped_sentence)}
+            else:
+                continue
+            words = stripped_sentence.split()
+            for j, word in enumerate(words):
+                data[f"s{i}w{j}"] = {"text": UND_G2P(word)}
+        super().__init__(data)
+
+
+def process_text(text_path):
+    with open(text_path) as f:
+        raw_text = list(f)
+        text_index = TextHash(raw_text)
+    return text_index
 
 
 def normalize_uroman(text):
@@ -105,7 +141,7 @@ def load_model():
     return model
 
 
-def align_speech_file(audio, normalized_text, model):
+def align_speech_file(audio, text_hash, model):
     # Construct the dictionary
     # '@' represents the OOV token
     # <pad> and </s> are fairseq's legacy tokens, which're not used.
@@ -145,10 +181,8 @@ def align_speech_file(audio, normalized_text, model):
     }
 
     emission = get_emission(model, audio.to(DEVICE))
-    segments, word_segments, sentence_segments = compute_alignments(
-        normalized_text, dictionary, emission
-    )
-    return segments, word_segments, sentence_segments, emission.size(1)
+    segments, words, sentences = compute_alignments(text_hash, dictionary, emission)
+    return segments, words, sentences, emission.size(1)
 
 
 def get_emission(model, waveform):
@@ -159,12 +193,17 @@ def get_emission(model, waveform):
         return torch.log_softmax(emission, dim=-1)
 
 
-def compute_alignments(transcript, dictionary, emission):
-    tokens = [dictionary[c] for c in transcript.replace(" ", "").replace("|", "")]
+def compute_alignments(transcript_hash, dictionary, emission):
+    all_words = [
+        v["text"].output_string for k, v in transcript_hash.items() if "w" in k
+    ]
+    transcript = "".join(all_words)
 
+    tokens = [dictionary[c] for c in transcript]
     targets = torch.tensor([tokens], dtype=torch.int32, device=emission.device)
     input_lengths = torch.tensor([emission.shape[1]], device=emission.device)
     target_lengths = torch.tensor([targets.shape[1]], device=emission.device)
+
     alignment, scores = forced_align(
         emission, targets, input_lengths, target_lengths, 0
     )
@@ -173,7 +212,6 @@ def compute_alignments(transcript, dictionary, emission):
     alignment, scores = alignment[0].tolist(), scores[0].tolist()
 
     assert len(alignment) == len(scores) == emission.size(1)
-
     token_index = -1
     prev_hyp = 0
     frames = []
@@ -186,9 +224,7 @@ def compute_alignments(transcript, dictionary, emission):
             token_index += 1
         frames.append(Frame(token_index, i, score))
         prev_hyp = ali
-
-    # compute frame alignments from token alignments
-    transcript_nobreaks = transcript.replace(" ", "").replace("|", "")
+    words_to_match = [v | {"key": k} for k, v in transcript_hash.items() if "w" in k]
     i1, i2 = 0, 0
     segments = []
     while i1 < len(frames):
@@ -198,58 +234,68 @@ def compute_alignments(transcript, dictionary, emission):
 
         segments.append(
             Segment(
-                transcript_nobreaks[frames[i1].token_index],
+                transcript[frames[i1].token_index],
                 frames[i1].time_index,
                 frames[i2 - 1].time_index + 1,
                 score,
             )
         )
         i1 = i2
+    segments_to_match = segments
+    while len(words_to_match) > 0:
+        current_word = words_to_match.pop(0)
+        current_segment_sequence = ""
+        scores = []
 
-    # compute word alignments from token alignments
-    # compue word alignments from token alignments
-    separator = " "
-    words = []
-    i1, i2, i3 = 0, 0, 0
-    transcript_no_sentence_breaks = transcript.replace("|", "")
-    while i3 < len(transcript_no_sentence_breaks):
-        if (
-            i3 == len(transcript_no_sentence_breaks) - 1
-            or transcript_no_sentence_breaks[i3] == separator
-        ):
-            if i1 != i2:
-                if i3 == len(transcript_no_sentence_breaks) - 1:
-                    i2 += 1
-                segs = segments[i1:i2]
-                word = "".join([s.label for s in segs])
-                score = sum(s.score * len(s) for s in segs) / sum(len(s) for s in segs)
-                words.append(Segment(word, segs[0].start, segs[-1].end + 1, score))
-            i1 = i2
-        else:
-            i2 += 1
-        i3 += 1
-    sentences = []
-    separator = "|"
-    i1, i2, i3 = 0, 0, 0
-    transcript_no_word_break = transcript.replace(" ", "")
-    while i3 < len(transcript_no_word_break):
-        if (
-            i3 == len(transcript_no_word_break) - 1
-            or transcript_no_word_break[i3] == separator
-        ):
-            if i1 != i2:
-                if i3 == len(transcript_no_word_break) - 1:
-                    i2 += 1
-                segs = segments[i1:i2]
-                sentence = "".join([s.label for s in segs])
-                score = sum(s.score * len(s) for s in segs) / sum(len(s) for s in segs)
-                sentences.append(
-                    Segment(sentence, segs[0].start, segs[-1].end + 1, score)
-                )
-            i1 = i2
-        else:
-            i2 += 1
-        i3 += 1
+        if segments_to_match:
+            start = segments_to_match[0].start
+        end = None
+
+        while len(segments_to_match) > 0:
+            current_segment = segments_to_match.pop(0)
+            scores.append(current_segment.score)
+            end = current_segment.end
+
+            current_segment_sequence += current_segment.label
+            if (
+                current_segment_sequence
+                == current_word[
+                    "text"
+                ].output_string  # break the loop if the word is equal to the output string
+            ):
+                break
+        if end is not None:
+            transcript_hash[current_word["key"]] = Segment(
+                current_word["text"].input_string, start, end, sum(scores) / len(scores)
+            )
+
+    key_pattern = re.compile(
+        r"""
+            (s\d+)                   # sentence
+            (w\d+)                   # word 
+             """,
+        re.VERBOSE | re.IGNORECASE,
+    )
+    word_hash = {k: v for k, v in transcript_hash.items() if "w" in k}
+    for sentence in [k for k in transcript_hash.keys() if "w" not in k]:
+        scores = []
+        start = None
+        end = None
+        for w_k, w_v in word_hash.items():
+            if sentence == re.match(key_pattern, w_k).group(1):
+                scores.append(w_v.score)
+                if start is None:
+                    start = w_v.start
+                end = w_v.end
+        if end is not None:
+            transcript_hash[sentence] = Segment(
+                transcript_hash[sentence]["text"].input_string,
+                start,
+                end,
+                sum(scores) / len(scores),
+            )
+    words = [v for k, v in transcript_hash.items() if "w" in k]
+    sentences = [v for k, v in transcript_hash.items() if "w" not in k]
     return segments, words, sentences
 
 

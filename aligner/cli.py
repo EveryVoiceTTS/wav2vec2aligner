@@ -7,8 +7,10 @@ import torchaudio
 from .utils import (
     align_speech_file,
     create_text_grid_from_segments,
+    create_transducer,
     load_model,
-    process_text,
+    read_text,
+    TextHash
 )
 
 
@@ -38,7 +40,9 @@ def align_single(
         audio_path = fn + f"-{sample_rate}" + ext
         torchaudio.save(audio_path, wav, sample_rate)
     print("performing alignment")
-    text_hash = process_text(text_path)
+    sentence_list = read_text(text_path)
+    transducer = create_transducer(''.join(sentence_list))
+    text_hash = TextHash(sentence_list, transducer)
     characters, words, sentences, num_frames = align_speech_file(wav, text_hash, model)
     print("creating textgrid")
     waveform_to_frame_ratio = wav.size(1) / num_frames

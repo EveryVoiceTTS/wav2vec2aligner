@@ -12,39 +12,79 @@ from torchaudio.models import wav2vec2_model
 from .classes import Frame, Segment
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-punctuation_transducer = Transducer(
+DICTIONARY = {
+        "<blank>": 0,
+        "<pad>": 1,
+        "</s>": 2,
+        "@": 3,
+        "a": 4,
+        "i": 5,
+        "e": 6,
+        "n": 7,
+        "o": 8,
+        "u": 9,
+        "t": 10,
+        "s": 11,
+        "r": 12,
+        "m": 13,
+        "k": 14,
+        "l": 15,
+        "d": 16,
+        "g": 17,
+        "h": 18,
+        "y": 19,
+        "b": 20,
+        "p": 21,
+        "w": 22,
+        "c": 23,
+        "v": 24,
+        "j": 25,
+        "z": 26,
+        "f": 27,
+        "'": 28,
+        "q": 29,
+        "x": 30,
+    }
+
+class TextHash(dict):
+    def __init__(self, sentence_list, transducer):
+        data = {}
+        for i, sentence in enumerate(sentence_list):
+            if sentence:
+                data[f"s{i}"] = {"text": transducer(sentence)}
+            else:
+                continue
+            words = sentence.split()
+            for j, word in enumerate(words):
+                data[f"s{i}w{j}"] = {"text": transducer(word)}
+        super().__init__(data)
+
+
+def create_transducer(text):
+    text = text.lower()
+    allowable_chars = DICTIONARY.keys()
+    fallback_mapping = {}
+    und_transducer = make_g2p("und", "und-ascii")
+    text = und_transducer(text).output_string
+    for char in text:
+        if char not in allowable_chars and char not in fallback_mapping:
+            fallback_mapping[char] = ""
+    for k in fallback_mapping.keys():
+        print(f"Found {k} which is not modelled by Wav2Vec2; skipping for alignment")
+    punctuation_transducer = Transducer(
     Mapping(
-        [{"in": "-", "out": ""}, {"in": ",", "out": ""}],
+        [{"in": k, "out": v} for k, v in fallback_mapping.items()],
         in_lang="und-ascii",
         out_lang="uroman",
         case_sensitive=False,
     )
-)
-und_transducer = make_g2p("und", "und-ascii")
-und_transducer.__setattr__("norm_form", "NFC")
-UND_G2P = CompositeTransducer([und_transducer, punctuation_transducer])
+    )
+    und_transducer.__setattr__("norm_form", "NFC")
+    return CompositeTransducer([und_transducer, punctuation_transducer])
 
-
-class TextHash(dict):
-    def __init__(self, sentence_list):
-        data = {}
-        for i, sentence in enumerate(sentence_list):
-            stripped_sentence = sentence.strip()
-            if stripped_sentence:
-                data[f"s{i}"] = {"text": UND_G2P(stripped_sentence)}
-            else:
-                continue
-            words = stripped_sentence.split()
-            for j, word in enumerate(words):
-                data[f"s{i}w{j}"] = {"text": UND_G2P(word)}
-        super().__init__(data)
-
-
-def process_text(text_path):
+def read_text(text_path):
     with open(text_path) as f:
-        raw_text = list(f)
-        text_index = TextHash(raw_text)
-    return text_index
+        return [x.strip() for x in f]
 
 
 def normalize_uroman(text):
@@ -146,42 +186,10 @@ def align_speech_file(audio, text_hash, model):
     # '@' represents the OOV token
     # <pad> and </s> are fairseq's legacy tokens, which're not used.
     # <star> token is omitted as we do not use it in this tutorial
-    dictionary = {
-        "<blank>": 0,
-        "<pad>": 1,
-        "</s>": 2,
-        "@": 3,
-        "a": 4,
-        "i": 5,
-        "e": 6,
-        "n": 7,
-        "o": 8,
-        "u": 9,
-        "t": 10,
-        "s": 11,
-        "r": 12,
-        "m": 13,
-        "k": 14,
-        "l": 15,
-        "d": 16,
-        "g": 17,
-        "h": 18,
-        "y": 19,
-        "b": 20,
-        "p": 21,
-        "w": 22,
-        "c": 23,
-        "v": 24,
-        "j": 25,
-        "z": 26,
-        "f": 27,
-        "'": 28,
-        "q": 29,
-        "x": 30,
-    }
+    
 
     emission = get_emission(model, audio.to(DEVICE))
-    segments, words, sentences = compute_alignments(text_hash, dictionary, emission)
+    segments, words, sentences = compute_alignments(text_hash, DICTIONARY, emission)
     return segments, words, sentences, emission.size(1)
 
 

@@ -241,7 +241,7 @@ def compute_alignments(transcript_hash, dictionary, emission):
             )
         )
         i1 = i2
-    segments_to_match = segments
+    segments_to_match = segments.copy()
     while len(words_to_match) > 0:
         current_word = words_to_match.pop(0)
         current_segment_sequence = ""

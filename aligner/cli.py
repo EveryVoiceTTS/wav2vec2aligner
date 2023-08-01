@@ -39,12 +39,20 @@ def align_single(
         torchaudio.save(audio_path, wav, sample_rate)
     print("performing alignment")
     text_hash = process_text(text_path)
-    segments, words, sentences, num_frames = align_speech_file(wav, text_hash, model)
+    characters, words, sentences, num_frames = align_speech_file(wav, text_hash, model)
     print("creating textgrid")
     waveform_to_frame_ratio = wav.size(1) / num_frames
     tg = create_text_grid_from_segments(
+        characters, "characters", waveform_to_frame_ratio, sample_rate=sample_rate
+    )
+    words_tg = create_text_grid_from_segments(
+        words, "words", waveform_to_frame_ratio, sample_rate=sample_rate
+    )
+    sentences_tg = create_text_grid_from_segments(
         sentences, "sentences", waveform_to_frame_ratio, sample_rate=sample_rate
     )
+    tg.tiers += words_tg.get_tiers()
+    tg.tiers += sentences_tg.get_tiers()
     tg_path = Path(audio_path).with_suffix(".TextGrid")
     print(f"writing file to {tg_path}")
     tg.to_file(tg_path)

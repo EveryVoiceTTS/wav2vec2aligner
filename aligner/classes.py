@@ -1,6 +1,4 @@
-from dataclasses import dataclass, field
-
-from g2p.transducer import TransductionGraph
+from dataclasses import dataclass
 
 
 @dataclass

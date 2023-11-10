@@ -13,7 +13,7 @@ with open(path.join(this_directory, "requirements.txt"), encoding="utf8") as f:
     REQS = f.read().splitlines()
 
 setup(
-    name="aligner",
+    name="ctc-segmentation-aligner",
     python_requires=">=3.6",
     version=1.0,
     author="Aidan Pine",
@@ -24,7 +24,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=REQS,
-    entry_points={"console_scripts": ["align = aligner.cli:cli"]},
+    entry_points={"console_scripts": ["ctc-segmenter = aligner.cli:app"]},
     zip_safe=False,
     classifiers=[
         "Programming Language :: Python :: 3",

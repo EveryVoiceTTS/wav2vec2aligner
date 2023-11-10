@@ -7,44 +7,12 @@ from g2p.mappings import Mapping
 from g2p.transducer import CompositeTransducer, Transducer
 from pympi.Praat import TextGrid
 from torchaudio.functional import forced_align
-from torchaudio.models import wav2vec2_model
+# from torchaudio.models import wav2vec2_model
+import torchaudio
 
 from .classes import Frame, Segment
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DICTIONARY = {
-        "<blank>": 0,
-        "<pad>": 1,
-        "</s>": 2,
-        "@": 3,
-        "a": 4,
-        "i": 5,
-        "e": 6,
-        "n": 7,
-        "o": 8,
-        "u": 9,
-        "t": 10,
-        "s": 11,
-        "r": 12,
-        "m": 13,
-        "k": 14,
-        "l": 15,
-        "d": 16,
-        "g": 17,
-        "h": 18,
-        "y": 19,
-        "b": 20,
-        "p": 21,
-        "w": 22,
-        "c": 23,
-        "v": 24,
-        "j": 25,
-        "z": 26,
-        "f": 27,
-        "'": 28,
-        "q": 29,
-        "x": 30,
-    }
 
 class TextHash(dict):
     def __init__(self, sentence_list, transducer):
@@ -60,9 +28,9 @@ class TextHash(dict):
         super().__init__(data)
 
 
-def create_transducer(text):
+def create_transducer(text, labels_dictionary):
     text = text.lower()
-    allowable_chars = DICTIONARY.keys()
+    allowable_chars = labels_dictionary.keys()
     fallback_mapping = {}
     und_transducer = make_g2p("und", "und-ascii")
     text = und_transducer(text).output_string
@@ -145,43 +113,47 @@ def plot_emission(emission):
 
 
 def load_model():
-    model = wav2vec2_model(
-        extractor_mode="layer_norm",
-        extractor_conv_layer_config=[
-            (512, 10, 5),
-            (512, 3, 2),
-            (512, 3, 2),
-            (512, 3, 2),
-            (512, 3, 2),
-            (512, 2, 2),
-            (512, 2, 2),
-        ],
-        extractor_conv_bias=True,
-        encoder_embed_dim=1024,
-        encoder_projection_dropout=0.0,
-        encoder_pos_conv_kernel=128,
-        encoder_pos_conv_groups=16,
-        encoder_num_layers=24,
-        encoder_num_heads=16,
-        encoder_attention_dropout=0.0,
-        encoder_ff_interm_features=4096,
-        encoder_ff_interm_dropout=0.1,
-        encoder_dropout=0.0,
-        encoder_layer_norm_first=True,
-        encoder_layer_drop=0.1,
-        aux_num_out=31,
-    )
-    model.load_state_dict(
-        torch.hub.load_state_dict_from_url(
-            "https://dl.fbaipublicfiles.com/mms/torchaudio/ctc_alignment_mling_uroman/model.pt"
-        )
-    )
-    model.eval()
+    bundle = torchaudio.pipelines.MMS_FA
+    model = bundle.get_model()
+    # labels = bundle.get_labels()
+    labels = {
+        "<blank>": 0,
+        "<pad>": 1,
+        "</s>": 2,
+        "@": 3,
+        "a": 4,
+        "i": 5,
+        "e": 6,
+        "n": 7,
+        "o": 8,
+        "u": 9,
+        "t": 10,
+        "s": 11,
+        "r": 12,
+        "m": 13,
+        "k": 14,
+        "l": 15,
+        "d": 16,
+        "g": 17,
+        "h": 18,
+        "y": 19,
+        "b": 20,
+        "p": 21,
+        "w": 22,
+        "c": 23,
+        "v": 24,
+        "j": 25,
+        "z": 26,
+        "f": 27,
+        "'": 28,
+        "q": 29,
+        "x": 30,
+    }
     model.to(DEVICE)
-    return model
+    return model, labels
 
 
-def align_speech_file(audio, text_hash, model, word_padding, sentence_padding):
+def align_speech_file(audio, text_hash, model, labels_dictionary, word_padding, sentence_padding):
     # Construct the dictionary
     # '@' represents the OOV token
     # <pad> and </s> are fairseq's legacy tokens, which're not used.
@@ -189,7 +161,7 @@ def align_speech_file(audio, text_hash, model, word_padding, sentence_padding):
     
 
     emission = get_emission(model, audio.to(DEVICE))
-    segments, words, sentences = compute_alignments(text_hash, DICTIONARY, emission, word_padding=word_padding, sentence_padding=sentence_padding)
+    segments, words, sentences = compute_alignments(text_hash, labels_dictionary, emission, word_padding=word_padding, sentence_padding=sentence_padding)
     return segments, words, sentences, emission.size(1)
 
 

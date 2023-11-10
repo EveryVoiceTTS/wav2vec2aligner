@@ -1,0 +1,5 @@
+torch>=2.1.0
+torchaudio>=2.1.0
+g2p>=1.0.20230417
+pympi-ling
+typer[all]>=0.9.0

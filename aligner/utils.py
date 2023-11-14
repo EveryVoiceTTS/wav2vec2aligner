@@ -109,9 +109,9 @@ def plot_emission(emission):
 
 
 def load_model():
-    bundle = torchaudio.pipelines.MMS_FA
+    bundle = torchaudio.pipelines.WAV2VEC2_ASR_LARGE_960H
     model = bundle.get_model()
-    labels = {l: i for i, l in enumerate(bundle.get_labels())}
+    labels = {l.lower(): i for i, l in enumerate(bundle.get_labels())}
     model.to(DEVICE)
     return model, labels
 

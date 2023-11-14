@@ -39,13 +39,9 @@ def create_transducer(text, labels_dictionary):
             fallback_mapping[char] = ""
     for k in fallback_mapping.keys():
         print(f"Found {k} which is not modelled by Wav2Vec2; skipping for alignment")
+    punctuation_mapping_dict = [{"in": re.escape(k), "out": v} for k, v in fallback_mapping.items()]
     punctuation_transducer = Transducer(
-    Mapping(
-        [{"in": k, "out": v} for k, v in fallback_mapping.items()],
-        in_lang="und-ascii",
-        out_lang="uroman",
-        case_sensitive=False,
-    )
+    Mapping(punctuation_mapping_dict, in_lang="und-ascii", out_lang="uroman", case_sensitive=False)
     )
     und_transducer.__setattr__("norm_form", "NFC")
     return CompositeTransducer([und_transducer, punctuation_transducer])
@@ -115,51 +111,12 @@ def plot_emission(emission):
 def load_model():
     bundle = torchaudio.pipelines.MMS_FA
     model = bundle.get_model()
-    # labels = bundle.get_labels()
-    labels = {
-        "<blank>": 0,
-        "<pad>": 1,
-        "</s>": 2,
-        "@": 3,
-        "a": 4,
-        "i": 5,
-        "e": 6,
-        "n": 7,
-        "o": 8,
-        "u": 9,
-        "t": 10,
-        "s": 11,
-        "r": 12,
-        "m": 13,
-        "k": 14,
-        "l": 15,
-        "d": 16,
-        "g": 17,
-        "h": 18,
-        "y": 19,
-        "b": 20,
-        "p": 21,
-        "w": 22,
-        "c": 23,
-        "v": 24,
-        "j": 25,
-        "z": 26,
-        "f": 27,
-        "'": 28,
-        "q": 29,
-        "x": 30,
-    }
+    labels = {l: i for i, l in enumerate(bundle.get_labels())}
     model.to(DEVICE)
     return model, labels
 
 
 def align_speech_file(audio, text_hash, model, labels_dictionary, word_padding, sentence_padding):
-    # Construct the dictionary
-    # '@' represents the OOV token
-    # <pad> and </s> are fairseq's legacy tokens, which're not used.
-    # <star> token is omitted as we do not use it in this tutorial
-    
-
     emission = get_emission(model, audio.to(DEVICE))
     segments, words, sentences = compute_alignments(text_hash, labels_dictionary, emission, word_padding=word_padding, sentence_padding=sentence_padding)
     return segments, words, sentences, emission.size(1)

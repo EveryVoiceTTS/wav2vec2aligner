@@ -28,7 +28,7 @@ class TextHash(dict):
         super().__init__(data)
 
 
-def create_transducer(text, labels_dictionary):
+def create_transducer(text, labels_dictionary, debug=False):
     text = text.lower()
     allowable_chars = labels_dictionary.keys()
     fallback_mapping = {}
@@ -38,10 +38,10 @@ def create_transducer(text, labels_dictionary):
         if char not in allowable_chars and char not in fallback_mapping:
             fallback_mapping[char] = ""
     for k in fallback_mapping.keys():
-        print(f"Found {k} which is not modelled by Wav2Vec2; skipping for alignment")
-    punctuation_mapping_dict = [{"in": re.escape(k), "out": v} for k, v in fallback_mapping.items()]
+        if debug:
+            print(f"Found {k} which is not modelled by Wav2Vec2; skipping for alignment")
     punctuation_transducer = Transducer(
-    Mapping(punctuation_mapping_dict, in_lang="und-ascii", out_lang="uroman", case_sensitive=False)
+    Mapping(rules=[{"in": re.escape(k), "out": v} for k, v in fallback_mapping.items()], in_lang="und-ascii", out_lang="uroman", case_sensitive=False)
     )
     und_transducer.__setattr__("norm_form", "NFC")
     return CompositeTransducer([und_transducer, punctuation_transducer])
@@ -51,67 +51,12 @@ def read_text(text_path):
         return [x.strip() for x in f]
 
 
-def normalize_uroman(text):
-    text = text.lower()
-    text = text.replace("’", "'")
-    text = re.sub("([^a-z' ])", " ", text)
-    text = re.sub(" +", " ", text)
-    return text.strip()
-
-
-# utility function for playing audio segments.
-def display_segment(i, waveform, word_segments, num_frames, sample_rate=16000):
-    ratio = waveform.size(1) / num_frames
-    word = word_segments[i]
-    x0 = int(ratio * word.start)
-    x1 = int(ratio * word.end)
-    print(
-        f"{word.label} ({word.score:.2f}): {x0 / sample_rate:.3f} - {x1 / sample_rate:.3f} sec"
-    )
-    segment = waveform[:, x0:x1]
-    return segment.numpy(), sample_rate
-
-
-# utility function for plotting word alignments
-def plot_alignments(waveform, emission, segments, word_segments, sample_rate=16000):
-    fig, ax = plt.subplots()
-    ax.specgram(waveform[0], Fs=sample_rate)
-    xlim = ax.get_xlim()
-
-    ratio = waveform.size(1) / sample_rate / emission.size(1)
-    for word in word_segments:
-        t0, t1 = word.start * ratio, word.end * ratio
-        ax.axvspan(t0, t1, facecolor="None", hatch="/", edgecolor="white")
-        ax.annotate(
-            f"{word.score:.2f}", (t0, sample_rate * 0.51), annotation_clip=False
-        )
-
-    for seg in segments:
-        if seg.label != "|":
-            ax.annotate(
-                seg.label,
-                (seg.start * ratio, sample_rate * 0.53),
-                annotation_clip=False,
-            )
-
-    ax.set_xlabel("time [second]")
-    ax.set_xlim(xlim)
-    fig.tight_layout()
-
-    return waveform, sample_rate
-
-
-def plot_emission(emission):
-    fig, ax = plt.subplots()
-    ax.imshow(emission.T, aspect="auto")
-    ax.set_title("Emission")
-    fig.tight_layout()
-
-
 def load_model():
     bundle = torchaudio.pipelines.WAV2VEC2_ASR_LARGE_960H
     model = bundle.get_model()
     labels = {l.lower(): i for i, l in enumerate(bundle.get_labels())}
+    del labels['-'] # Remove blank token
+    del labels['|'] # Remove sentence token
     model.to(DEVICE)
     return model, labels
 
@@ -135,7 +80,6 @@ def compute_alignments(transcript_hash, dictionary, emission, word_padding=0, se
         v["text"].output_string for k, v in transcript_hash.items() if "w" in k
     ]
     transcript = "".join(all_words)
-
     tokens = [dictionary[c] for c in transcript]
     targets = torch.tensor([tokens], dtype=torch.int32, device=emission.device)
     input_lengths = torch.tensor([emission.shape[1]], device=emission.device)

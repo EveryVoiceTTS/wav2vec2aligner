@@ -26,7 +26,8 @@ def align_single(
     audio_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False),
     sample_rate: int = typer.Option(16000, help="The target sample rate for the model."),
     word_padding: int = typer.Option(0, help="How many frames to pad around words."),
-    sentence_padding: int = typer.Option(0, help="How many frames to pad around sentences (additive with word-padding).")
+    sentence_padding: int = typer.Option(0, help="How many frames to pad around sentences (additive with word-padding)."),
+    debug: bool = typer.Option(False, help="Print debug statements")
 ):
     print("loading model...")
     model, labels = load_model()
@@ -45,7 +46,7 @@ def align_single(
         torchaudio.save(audio_path, wav, sample_rate)
     print("processing text")
     sentence_list = read_text(text_path)
-    transducer = create_transducer(''.join(sentence_list), labels)
+    transducer = create_transducer(''.join(sentence_list), labels, debug)
     text_hash = TextHash(sentence_list, transducer)
     print("performing alignment")
     characters, words, sentences, num_frames = align_speech_file(wav, text_hash, model, labels, word_padding, sentence_padding)

@@ -1,18 +1,19 @@
 import re
 
-import matplotlib.pyplot as plt
 import torch
+
+# from torchaudio.models import wav2vec2_model
+import torchaudio
 from g2p import make_g2p
 from g2p.mappings import Mapping
 from g2p.transducer import CompositeTransducer, Transducer
 from pympi.Praat import TextGrid
 from torchaudio.functional import forced_align
-# from torchaudio.models import wav2vec2_model
-import torchaudio
 
 from .classes import Frame, Segment
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class TextHash(dict):
     def __init__(self, sentence_list, transducer):
@@ -39,12 +40,20 @@ def create_transducer(text, labels_dictionary, debug=False):
             fallback_mapping[char] = ""
     for k in fallback_mapping.keys():
         if debug:
-            print(f"Found {k} which is not modelled by Wav2Vec2; skipping for alignment")
+            print(
+                f"Found {k} which is not modelled by Wav2Vec2; skipping for alignment"
+            )
     punctuation_transducer = Transducer(
-    Mapping(rules=[{"in": re.escape(k), "out": v} for k, v in fallback_mapping.items()], in_lang="und-ascii", out_lang="uroman", case_sensitive=False)
+        Mapping(
+            rules=[{"in": re.escape(k), "out": v} for k, v in fallback_mapping.items()],
+            in_lang="und-ascii",
+            out_lang="uroman",
+            case_sensitive=False,
+        )
     )
     und_transducer.__setattr__("norm_form", "NFC")
     return CompositeTransducer([und_transducer, punctuation_transducer])
+
 
 def read_text(text_path):
     with open(text_path) as f:
@@ -55,15 +64,23 @@ def load_model():
     bundle = torchaudio.pipelines.WAV2VEC2_ASR_LARGE_960H
     model = bundle.get_model()
     labels = {l.lower(): i for i, l in enumerate(bundle.get_labels())}
-    del labels['-'] # Remove blank token
-    del labels['|'] # Remove sentence token
+    del labels["-"]  # Remove blank token
+    del labels["|"]  # Remove sentence token
     model.to(DEVICE)
     return model, labels
 
 
-def align_speech_file(audio, text_hash, model, labels_dictionary, word_padding, sentence_padding):
+def align_speech_file(
+    audio, text_hash, model, labels_dictionary, word_padding, sentence_padding
+):
     emission = get_emission(model, audio.to(DEVICE))
-    segments, words, sentences = compute_alignments(text_hash, labels_dictionary, emission, word_padding=word_padding, sentence_padding=sentence_padding)
+    segments, words, sentences = compute_alignments(
+        text_hash,
+        labels_dictionary,
+        emission,
+        word_padding=word_padding,
+        sentence_padding=sentence_padding,
+    )
     return segments, words, sentences, emission.size(1)
 
 
@@ -75,7 +92,9 @@ def get_emission(model, waveform):
         return torch.log_softmax(emission, dim=-1)
 
 
-def compute_alignments(transcript_hash, dictionary, emission, word_padding=0, sentence_padding=0):
+def compute_alignments(
+    transcript_hash, dictionary, emission, word_padding=0, sentence_padding=0
+):
     all_words = [
         v["text"].output_string for k, v in transcript_hash.items() if "w" in k
     ]
@@ -147,13 +166,16 @@ def compute_alignments(transcript_hash, dictionary, emission, word_padding=0, se
                 break
         if end is not None:
             transcript_hash[current_word["key"]] = Segment(
-                current_word["text"].input_string, start - word_padding, end + word_padding, sum(scores) / len(scores)
+                current_word["text"].input_string,
+                start - word_padding,
+                end + word_padding,
+                sum(scores) / len(scores),
             )
 
     key_pattern = re.compile(
         r"""
             (s\d+)                   # sentence
-            (w\d+)                   # word 
+            (w\d+)                   # word
              """,
         re.VERBOSE | re.IGNORECASE,
     )

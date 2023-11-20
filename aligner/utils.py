@@ -4,9 +4,6 @@ import torch
 
 # from torchaudio.models import wav2vec2_model
 import torchaudio
-from g2p import make_g2p
-from g2p.mappings import Mapping
-from g2p.transducer import CompositeTransducer, Transducer
 from pympi.Praat import TextGrid
 from torchaudio.functional import forced_align
 
@@ -30,6 +27,9 @@ class TextHash(dict):
 
 
 def create_transducer(text, labels_dictionary, debug=False):
+    # deferred expensive imports
+    from g2p import make_g2p, Mapping, Transducer, CompositeTransducer
+
     text = text.lower()
     allowable_chars = labels_dictionary.keys()
     fallback_mapping = {}

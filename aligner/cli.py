@@ -1,16 +1,12 @@
 import os
 from pathlib import Path
 
-import torch
-import torchaudio
 import typer
 
 from .utils import (
     TextHash,
-    align_speech_file,
     create_text_grid_from_segments,
     create_transducer,
-    load_model,
     read_text,
 )
 
@@ -34,6 +30,11 @@ def align_single(
     debug: bool = typer.Option(False, help="Print debug statements"),
 ):
     print("loading model...")
+    import torch
+    import torchaudio
+
+    from .heavy import load_model
+
     model, labels = load_model()
     wav, sr = torchaudio.load(audio_path)
     if sr != sample_rate:
@@ -53,6 +54,8 @@ def align_single(
     transducer = create_transducer("".join(sentence_list), labels, debug)
     text_hash = TextHash(sentence_list, transducer)
     print("performing alignment")
+    from .heavy import align_speech_file
+
     characters, words, sentences, num_frames = align_speech_file(
         wav, text_hash, model, labels, word_padding, sentence_padding
     )

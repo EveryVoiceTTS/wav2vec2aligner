@@ -41,13 +41,13 @@ def align_single(
         print(f"resampling audio from {sr} to {sample_rate}")
         wav = torchaudio.functional.resample(wav, sr, sample_rate)
         fn, ext = os.path.splitext(audio_path)
-        audio_path = fn + f"-{sample_rate}" + ext
+        audio_path = Path(fn + f"-{sample_rate}" + ext)
         torchaudio.save(audio_path, wav, sample_rate)
     if wav.size(0) != 1:
         print(f"converting audio from {wav.size(0)} channels to mono")
         wav = torch.mean(wav, dim=0).unsqueeze(0)
         fn, ext = os.path.splitext(audio_path)
-        audio_path = fn + f"-{sample_rate}-mono" + ext
+        audio_path = Path(fn + f"-{sample_rate}-mono" + ext)
         torchaudio.save(audio_path, wav, sample_rate)
     print("processing text")
     sentence_list = read_text(text_path)
@@ -72,7 +72,7 @@ def align_single(
     )
     tg.tiers += words_tg.get_tiers()
     tg.tiers += sentences_tg.get_tiers()
-    tg_path = Path(audio_path).with_suffix(".TextGrid")
+    tg_path = audio_path.with_suffix(".TextGrid")
     print(f"writing file to {tg_path}")
     tg.to_file(tg_path)
 

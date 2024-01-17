@@ -1,4 +1,4 @@
-""" Setup for g2p
+""" Setup for wav2vec2aligner
 """
 import datetime as dt
 from os import path
@@ -14,7 +14,7 @@ with open(path.join(this_directory, "requirements.txt"), encoding="utf8") as f:
 
 setup(
     name="ctc-segmentation-aligner",
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     version="1.0",
     author="Aidan Pine",
     author_email="hello@aidanpine.ca",

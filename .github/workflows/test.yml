@@ -1,0 +1,51 @@
+name: Run Tests
+on:
+  - push
+  - pull_request
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: "3.8"
+      - name: Install dependencies and package
+        run: pip install -e . mypy
+      - name: Minimal test, --help should work
+        run: ctc-segmenter --help
+      - name: Code quality test, mypy should pass
+        run: mypy aligner
+      - name: Make sure the CLI stays fast
+        id: cli-load-time
+        run: |
+          PYTHONPROFILEIMPORTTIME=1 ctc-segmenter -h 2> importtime.txt > /dev/null
+          CLI_LOAD_TIME="$((/usr/bin/time --format=%E ctc-segmenter -h > /dev/null) 2>&1)"
+          echo "CLI load time: $CLI_LOAD_TIME" > import-message.txt
+          PR_HEAD="${{ github.event.pull_request.head.sha }}"
+          [[ $PR_HEAD ]] && echo "Pull Request HEAD: $PR_HEAD" >> import-message.txt
+          echo "Imports that take more than 0.1 s:" >> import-message.txt
+          grep -E 'cumulative|[0-9]{6} ' importtime.txt >> import-message.txt
+          cat import-message.txt
+          echo "Full import time log:"
+          cat importtime.txt
+          if [[ "$CLI_LOAD_TIME" > "0:01.00" ]]; then \
+            echo "ERROR: ctc-segmenter --help is too slow."; \
+            echo "Please run 'PYTHONPROFILEIMPORTTIME=1 ctc-segmenter -h 2> importtime.txt; tuna importtime.txt' and tuck away expensive imports so that the CLI doesn't load them until it uses them."; \
+            false; \
+          fi
+      - name: Report help speed in PR
+        if: github.event_name == 'pull_request'
+        uses: mshick/add-pr-comment@v2
+        with:
+          preformatted: true
+          message-path: import-message.txt

@@ -12,6 +12,7 @@ from .utils import (
 
 app = typer.Typer(
     pretty_exceptions_show_locals=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
     help="An alignment tool based on CTC segmentation to split long audio into utterances",
 )
 

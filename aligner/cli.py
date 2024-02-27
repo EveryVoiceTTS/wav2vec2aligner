@@ -17,10 +17,18 @@ app = typer.Typer(
 )
 
 
+def complete_path():
+    return []
+
+
 @app.command()
 def align_single(
-    text_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False),
-    audio_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False),
+    text_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+    ),
+    audio_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+    ),
     sample_rate: int = typer.Option(
         16000, help="The target sample rate for the model."
     ),

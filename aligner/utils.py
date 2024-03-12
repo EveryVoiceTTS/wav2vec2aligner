@@ -19,7 +19,9 @@ class TextHash(dict):
 
 def create_transducer(text, labels_dictionary, debug=False):
     # deferred expensive imports
-    from g2p import CompositeTransducer, Mapping, Transducer, make_g2p
+    from g2p import make_g2p
+    from g2p.mappings import Mapping
+    from g2p.transducer import CompositeTransducer, Transducer
 
     text = text.lower()
     allowable_chars = labels_dictionary.keys()

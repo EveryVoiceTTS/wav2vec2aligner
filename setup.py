@@ -1,5 +1,6 @@
 """ Setup for wav2vec2aligner
 """
+
 import datetime as dt
 from os import path
 

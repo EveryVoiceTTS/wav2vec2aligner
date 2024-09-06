@@ -45,19 +45,19 @@ def align_single(
     from .heavy import load_model
 
     model, labels = load_model()
-    wav, sr = torchaudio.load(audio_path)
+    wav, sr = torchaudio.load(str(audio_path))
     if sr != sample_rate:
         print(f"resampling audio from {sr} to {sample_rate}")
         wav = torchaudio.functional.resample(wav, sr, sample_rate)
         fn, ext = os.path.splitext(audio_path)
         audio_path = Path(fn + f"-{sample_rate}" + ext)
-        torchaudio.save(audio_path, wav, sample_rate)
+        torchaudio.save(str(audio_path), wav, sample_rate)
     if wav.size(0) != 1:
         print(f"converting audio from {wav.size(0)} channels to mono")
         wav = torch.mean(wav, dim=0).unsqueeze(0)
         fn, ext = os.path.splitext(audio_path)
         audio_path = Path(fn + f"-{sample_rate}-mono" + ext)
-        torchaudio.save(audio_path, wav, sample_rate)
+        torchaudio.save(str(audio_path), wav, sample_rate)
     print("processing text")
     sentence_list = read_text(text_path)
     transducer = create_transducer("".join(sentence_list), labels, debug)

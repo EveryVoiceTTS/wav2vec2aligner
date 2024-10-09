@@ -8,4 +8,6 @@ Create a conda env, then `pip install -e .`
 
 ## Usage
 
-`ctc-segmenter sample.txt sample.wav` which will output a [Praat TextGrid](https://www.fon.hum.uva.nl/praat/) with the word, and sentence level alignments.
+`ctc-segmenter align-single sample.txt sample.wav` which will output a [Praat TextGrid](https://www.fon.hum.uva.nl/praat/) with the word, and sentence level alignments.
+
+You can then adjust the Praat TextGrid as necessary and run `ctc-segmenter extract-segments-from-textgrid sample.TextGrid sample.wav outdir` which will extract the segments and write them to the `outdir` directory along with a metadata file.

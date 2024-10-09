@@ -22,6 +22,64 @@ def complete_path():
 
 
 @app.command()
+def extract_segments_from_textgrid(
+    text_grid_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+    ),
+    audio_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+    ),
+    outdir: Path = typer.Argument(
+        ..., exists=True, file_okay=False, dir_okay=True, autocompletion=complete_path
+    ),
+    tier_number: int = typer.Option(
+        4, help="The index of the tier to extract intervals from."
+    ),
+    prefix: str = typer.Option(
+        "segment", help="The basename prefix used to label files."
+    ),
+):
+    import csv
+
+    from pydub import AudioSegment
+    from pympi.Praat import TextGrid
+    from tqdm import tqdm
+
+    audio = AudioSegment.from_file(audio_path)
+    tg = TextGrid(text_grid_path)
+    tier = tg.tiers[tier_number]
+    intervals = [x for x in tier.get_all_intervals() if x[2]]
+    segments = []
+    n_fill = len(str(len(intervals)))
+    for i, interval in enumerate(intervals):
+        start = interval[0] * 1000
+        end = interval[1] * 1000
+        segments.append(
+            {
+                "audio": audio[start:end],
+                "text": interval[2],
+                "basename": f"{prefix}{str(i).zfill(n_fill)}",
+            }
+        )
+
+    wavs_dir = outdir / "wavs"
+    wavs_dir.mkdir(parents=True, exist_ok=True)
+
+    for seg in tqdm(segments, desc="Writing audio to files"):
+        seg["audio"].export(wavs_dir / f'{seg["basename"]}.wav', format="wav")
+
+    with open(outdir / "metadata.psv", "w", encoding="utf8") as f:
+        writer = csv.DictWriter(f, delimiter="|", fieldnames=["basename", "text"])
+        writer.writeheader()
+        for seg in segments:
+            writer.writerow({"basename": seg["basename"], "text": seg["text"]})
+
+    print(
+        f"Success! Your audio is available in {wavs_dir.absolute()} and your corresponding metadata file is available in {(outdir / 'metadata.psv').absolute()}"
+    )
+
+
+@app.command()
 def align_single(
     text_path: Path = typer.Argument(
         ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path

@@ -30,7 +30,7 @@ def extract_segments_from_textgrid(
         ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
     ),
     outdir: Path = typer.Argument(
-        ..., exists=True, file_okay=False, dir_okay=True, autocompletion=complete_path
+        ..., exists=False, file_okay=False, dir_okay=True, autocompletion=complete_path
     ),
     tier_number: int = typer.Option(
         4, help="The index of the tier to extract intervals from."

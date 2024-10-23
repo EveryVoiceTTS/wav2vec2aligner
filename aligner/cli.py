@@ -10,10 +10,19 @@ from .utils import (
     read_text,
 )
 
+CLI_LONG_HELP = """
+    # Segment Help
+
+        - **align** --- This command will align a long audio file with some text into words and sentences.
+
+        - **extract** --- This command will take the alignment from the `align` command and extract it into multiple utterances in the format required for training a TTS system
+    """
+
 app = typer.Typer(
     pretty_exceptions_show_locals=False,
     context_settings={"help_option_names": ["-h", "--help"]},
-    help="An alignment tool based on CTC segmentation to split long audio into utterances",
+    rich_markup_mode="markdown",
+    help=CLI_LONG_HELP,
 )
 
 
@@ -21,7 +30,22 @@ def complete_path():
     return []
 
 
-@app.command()
+# We put this here for easy import into other modules that consume
+# the aligner, like EveryVoice
+EXTRACT_SEGMENTS_LONG_HELP = """
+    # Segmentation help
+
+    This command will take the alignment from the `align` command and extract it into multiple utterances in the format required for training a TTS system.
+    """
+
+EXTRACT_SEGMENTS_SHORT_HELP = "Extract the intervals from a TextGrid"
+
+
+@app.command(
+    name="extract",
+    help=EXTRACT_SEGMENTS_LONG_HELP,
+    short_help=EXTRACT_SEGMENTS_SHORT_HELP,
+)
 def extract_segments_from_textgrid(
     text_grid_path: Path = typer.Argument(
         ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
@@ -79,7 +103,21 @@ def extract_segments_from_textgrid(
     )
 
 
-@app.command()
+# We put this here for easy import into other modules that consume
+# the aligner, like EveryVoice
+ALIGN_SINGLE_LONG_HELP = """
+    # Segmentation help
+
+    This command will align a long audio file with some text.
+    This command should work on most languages and you should run it before running the new project or preprocessing steps.
+    This command will create a Praat TextGrid file. You must install Praat (https://www.fon.hum.uva.nl/praat/) if you want to inspect the alignments.
+    """
+ALIGN_SINGLE_SHORT_HELP = "Align a long audio file with some text"
+
+
+@app.command(
+    name="align", help=ALIGN_SINGLE_LONG_HELP, short_help=ALIGN_SINGLE_SHORT_HELP
+)
 def align_single(
     text_path: Path = typer.Argument(
         ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path

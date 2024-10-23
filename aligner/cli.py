@@ -10,10 +10,19 @@ from .utils import (
     read_text,
 )
 
+CLI_LONG_HELP = """
+    # Segment Help
+
+        - **align** --- This command will align a long audio file with some text into words and sentences.
+
+        - **extract** --- This command will take the alignment from the `align` command and extract it into multiple utterances in the format required for training a TTS system
+    """
+
 app = typer.Typer(
     pretty_exceptions_show_locals=False,
     context_settings={"help_option_names": ["-h", "--help"]},
-    help="An alignment tool based on CTC segmentation to split long audio into utterances",
+    rich_markup_mode="markdown",
+    help=CLI_LONG_HELP,
 )
 
 
@@ -21,7 +30,94 @@ def complete_path():
     return []
 
 
-@app.command()
+# We put this here for easy import into other modules that consume
+# the aligner, like EveryVoice
+EXTRACT_SEGMENTS_LONG_HELP = """
+    # Segmentation help
+
+    This command will take the alignment from the `align` command and extract it into multiple utterances in the format required for training a TTS system.
+    """
+
+EXTRACT_SEGMENTS_SHORT_HELP = "Extract the intervals from a TextGrid"
+
+
+@app.command(
+    name="extract",
+    help=EXTRACT_SEGMENTS_LONG_HELP,
+    short_help=EXTRACT_SEGMENTS_SHORT_HELP,
+)
+def extract_segments_from_textgrid(
+    text_grid_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+    ),
+    audio_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+    ),
+    outdir: Path = typer.Argument(
+        ..., exists=False, file_okay=False, dir_okay=True, autocompletion=complete_path
+    ),
+    tier_number: int = typer.Option(
+        4, help="The index of the tier to extract intervals from."
+    ),
+    prefix: str = typer.Option(
+        "segment", help="The basename prefix used to label files."
+    ),
+):
+    import csv
+
+    from pydub import AudioSegment
+    from pympi.Praat import TextGrid
+    from tqdm import tqdm
+
+    audio = AudioSegment.from_file(audio_path)
+    tg = TextGrid(text_grid_path)
+    tier = tg.tiers[tier_number]
+    intervals = [x for x in tier.get_all_intervals() if x[2]]
+    segments = []
+    n_fill = len(str(len(intervals)))
+    for i, interval in enumerate(intervals):
+        start = interval[0] * 1000
+        end = interval[1] * 1000
+        segments.append(
+            {
+                "audio": audio[start:end],
+                "text": interval[2],
+                "basename": f"{prefix}{str(i).zfill(n_fill)}",
+            }
+        )
+
+    wavs_dir = outdir / "wavs"
+    wavs_dir.mkdir(parents=True, exist_ok=True)
+
+    for seg in tqdm(segments, desc="Writing audio to files"):
+        seg["audio"].export(wavs_dir / f'{seg["basename"]}.wav', format="wav")
+
+    with open(outdir / "metadata.psv", "w", encoding="utf8") as f:
+        writer = csv.DictWriter(f, delimiter="|", fieldnames=["basename", "text"])
+        writer.writeheader()
+        for seg in segments:
+            writer.writerow({"basename": seg["basename"], "text": seg["text"]})
+
+    print(
+        f"Success! Your audio is available in {wavs_dir.absolute()} and your corresponding metadata file is available in {(outdir / 'metadata.psv').absolute()}"
+    )
+
+
+# We put this here for easy import into other modules that consume
+# the aligner, like EveryVoice
+ALIGN_SINGLE_LONG_HELP = """
+    # Segmentation help
+
+    This command will align a long audio file with some text.
+    This command should work on most languages and you should run it before running the new project or preprocessing steps.
+    This command will create a Praat TextGrid file. You must install Praat (https://www.fon.hum.uva.nl/praat/) if you want to inspect the alignments.
+    """
+ALIGN_SINGLE_SHORT_HELP = "Align a long audio file with some text"
+
+
+@app.command(
+    name="align", help=ALIGN_SINGLE_LONG_HELP, short_help=ALIGN_SINGLE_SHORT_HELP
+)
 def align_single(
     text_path: Path = typer.Argument(
         ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path

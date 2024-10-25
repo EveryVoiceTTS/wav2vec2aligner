@@ -108,7 +108,7 @@ def extract_segments_from_textgrid(
 ALIGN_SINGLE_LONG_HELP = """
     # Segmentation help
 
-    This command will align a long audio file with some text.
+    This command will align a long audio file with some text. Your text should be separated so that each sentence/utterance is on a new line in the text file.
     This command should work on most languages and you should run it before running the new project or preprocessing steps.
     This command will create a Praat TextGrid file. You must install Praat (https://www.fon.hum.uva.nl/praat/) if you want to inspect the alignments.
     """

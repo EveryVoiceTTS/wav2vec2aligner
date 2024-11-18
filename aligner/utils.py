@@ -49,7 +49,7 @@ def create_transducer(text, labels_dictionary, debug=False):
 
 
 def read_text(text_path):
-    with open(text_path) as f:
+    with open(text_path, encoding="utf8") as f:
         return [x.strip() for x in f]
 
 

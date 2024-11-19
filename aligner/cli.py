@@ -26,7 +26,7 @@ app = typer.Typer(
 )
 
 
-def complete_path():
+def complete_path(ctx=None, param=None, incomplete=None):
     return []
 
 
@@ -48,13 +48,13 @@ EXTRACT_SEGMENTS_SHORT_HELP = "Extract the intervals from a TextGrid"
 )
 def extract_segments_from_textgrid(
     text_grid_path: Path = typer.Argument(
-        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+        ..., exists=True, file_okay=True, dir_okay=False, shell_complete=complete_path
     ),
     audio_path: Path = typer.Argument(
-        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+        ..., exists=True, file_okay=True, dir_okay=False, shell_complete=complete_path
     ),
     outdir: Path = typer.Argument(
-        ..., exists=False, file_okay=False, dir_okay=True, autocompletion=complete_path
+        ..., exists=False, file_okay=False, dir_okay=True, shell_complete=complete_path
     ),
     tier_number: int = typer.Option(
         4, help="The index of the tier to extract intervals from."
@@ -120,10 +120,10 @@ ALIGN_SINGLE_SHORT_HELP = "Align a long audio file with some text"
 )
 def align_single(
     text_path: Path = typer.Argument(
-        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+        ..., exists=True, file_okay=True, dir_okay=False, shell_complete=complete_path
     ),
     audio_path: Path = typer.Argument(
-        ..., exists=True, file_okay=True, dir_okay=False, autocompletion=complete_path
+        ..., exists=True, file_okay=True, dir_okay=False, shell_complete=complete_path
     ),
     sample_rate: int = typer.Option(
         16000, help="The target sample rate for the model."

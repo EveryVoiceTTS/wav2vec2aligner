@@ -186,7 +186,3 @@ def align_single(
     tg_path = audio_path.with_suffix(".TextGrid")
     print(f"writing file to {tg_path}")
     tg.to_file(tg_path)
-
-
-if __name__ == "__main__":
-    align_single()

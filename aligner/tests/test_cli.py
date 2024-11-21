@@ -15,7 +15,8 @@ from unittest import TestCase
 
 from typer.testing import CliRunner
 
-from ..cli import app
+from ..classes import Segment
+from ..cli import app, complete_path
 
 
 class CLITest(TestCase):
@@ -100,3 +101,14 @@ class CLITest(TestCase):
                     non_blank_line_count = sum(1 for line in txt_f if line.strip())
                 for i in range(non_blank_line_count):
                     self.assertTrue((tmppath / f"out/wavs/segment{i}.wav"))
+
+
+class MiscTests(TestCase):
+    def test_shell_complete(self):
+        self.assertEqual(complete_path(), [])
+        self.assertEqual(complete_path(None, None, None), [])
+
+    def test_segment(self):
+        segment = Segment("text", 500, 700, 0.42)
+        self.assertEqual(len(segment), 200)
+        self.assertEqual(repr(segment), "text (0.42): [ 500,  700)")

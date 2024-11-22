@@ -32,7 +32,7 @@ def create_transducer(text, labels_dictionary, debug=False):
         if char not in allowable_chars and char not in fallback_mapping:
             fallback_mapping[char] = ""
     for k in fallback_mapping.keys():
-        if debug:
+        if debug:  # pragma: no cover
             print(
                 f"Found {k} which is not modelled by Wav2Vec2; skipping for alignment"
             )
@@ -49,7 +49,7 @@ def create_transducer(text, labels_dictionary, debug=False):
 
 
 def read_text(text_path):
-    with open(text_path) as f:
+    with open(text_path, encoding="utf8") as f:
         return [x.strip() for x in f]
 
 

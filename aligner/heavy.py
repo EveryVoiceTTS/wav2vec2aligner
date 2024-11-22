@@ -79,7 +79,7 @@ def compute_alignments(
             token_index += 1
         frames.append(Frame(token_index, i, score))
         prev_hyp = ali
-    words_to_match = [v | {"key": k} for k, v in transcript_hash.items() if "w" in k]
+    words_to_match = [{**v, "key": k} for k, v in transcript_hash.items() if "w" in k]
     i1, i2 = 0, 0
     segments = []
     while i1 < len(frames):

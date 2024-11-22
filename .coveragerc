@@ -1,0 +1,14 @@
+[run]
+source_pkgs = aligner
+omit =
+    *tmp*
+    */run_tests.py
+    */tests/*
+    */__main__.py
+
+[report]
+precision = 2
+exclude_lines =
+    pragma: no cover
+    if 0:
+    if __name__ == .__main__.:

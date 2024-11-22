@@ -134,7 +134,14 @@ def align_single(
     ),
     debug: bool = typer.Option(False, help="Print debug statements"),
 ):
-    print("loading model...")
+    # Do fast error checking before loading expensive dependencies
+    sentence_list = read_text(text_path)
+    if not sentence_list or not any(sentence_list):
+        raise typer.BadParameter(
+            f"TEXT_PATH file '{text_path}' is empty; it should contain sentences to align.",
+        )
+
+    print("loading pytorch...")
     import torch
     import torchaudio
 
@@ -155,7 +162,6 @@ def align_single(
         audio_path = Path(fn + f"-{sample_rate}-mono" + ext)
         torchaudio.save(str(audio_path), wav, sample_rate)
     print("processing text")
-    sentence_list = read_text(text_path)
     transducer = create_transducer("".join(sentence_list), labels, debug)
     text_hash = TextHash(sentence_list, transducer)
     print("performing alignment")
@@ -180,7 +186,3 @@ def align_single(
     tg_path = audio_path.with_suffix(".TextGrid")
     print(f"writing file to {tg_path}")
     tg.to_file(tg_path)
-
-
-if __name__ == "__main__":
-    align_single()

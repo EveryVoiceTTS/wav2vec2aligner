@@ -105,7 +105,6 @@ class CLITest(TestCase):
 
 class MiscTests(TestCase):
     def test_shell_complete(self):
-        self.assertEqual(complete_path(), [])
         self.assertEqual(complete_path(None, None, None), [])
 
     def test_segment(self):

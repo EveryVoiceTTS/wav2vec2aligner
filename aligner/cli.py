@@ -26,7 +26,7 @@ app = typer.Typer(
 )
 
 
-def complete_path(ctx=None, param=None, incomplete=None):
+def complete_path(ctx, param, incomplete):
     return []
 
 

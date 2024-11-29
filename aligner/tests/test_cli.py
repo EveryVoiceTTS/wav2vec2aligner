@@ -11,7 +11,9 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest import TestCase
+from unittest import SkipTest, TestCase
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 from typer.testing import CliRunner
 
@@ -56,21 +58,22 @@ class CLITest(TestCase):
                 self.assertIn("is empty", result.stdout)
 
     def fetch_ras_test_file(self, filename, outputdir):
-        from urllib.request import Request, urlopen
-
         repo, path = "https://github.com/ReadAlongs/Studio/", "/test/data/"
         request = Request(repo + "raw/refs/heads/main" + path + filename)
         request.add_header("Referer", repo + "blob/main" + path + filename)
-        response = urlopen(request)
+        response = urlopen(request, timeout=5)
         with open(os.path.join(outputdir, filename), "wb") as f:
             f.write(response.read())
 
     def test_align_something(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
-            self.fetch_ras_test_file("ej-fra.txt", tmpdir)
+            try:
+                self.fetch_ras_test_file("ej-fra.txt", tmpdir)
+                self.fetch_ras_test_file("ej-fra.m4a", tmpdir)
+            except URLError as e:  # pragma: no cover
+                raise SkipTest(f"Can't fetch test data: {e}")
             txt = tmppath / "ej-fra.txt"
-            self.fetch_ras_test_file("ej-fra.m4a", tmpdir)
             m4a = tmppath / "ej-fra.m4a"
             wav = tmppath / "ej-fra.wav"
             # Under most circumstances, align can take a .m4a input file, but not

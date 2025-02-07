@@ -51,3 +51,8 @@ dev = [
   "mypy>=1.8.0",
   "pre-commit>=3.2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/EveryVoiceTTS/wav2vec2aligner"
+Repository = "https://github.com/EveryVoiceTTS/wav2vec2aligner"
+Issues = "https://github.com/EveryVoiceTTS/wav2vec2aligner/issues"

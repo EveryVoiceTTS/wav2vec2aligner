@@ -7,9 +7,11 @@ If you installed everyvoice:
     python -m unittest everyvoice.model.aligner.wav2vec2aligner.aligner.tests.test_cli
 """
 
+import io
 import os
 import subprocess
 import tempfile
+from contextlib import redirect_stderr
 from pathlib import Path
 from unittest import SkipTest, TestCase
 from urllib.error import URLError
@@ -69,15 +71,18 @@ class CLITest(TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
             try:
-                self.fetch_ras_test_file("ej-fra.txt", tmpdir)
-                self.fetch_ras_test_file("ej-fra.m4a", tmpdir)
+                with redirect_stderr(io.StringIO()):
+                    self.fetch_ras_test_file("ej-fra.txt", tmpdir)
+                    self.fetch_ras_test_file("ej-fra.m4a", tmpdir)
             except URLError as e:  # pragma: no cover
-                raise SkipTest(f"Can't fetch test data: {e}")
+                raise SkipTest(
+                    f"Can't fetch test data: {e}; skipping the test that depends on the Internet."
+                )
             txt = tmppath / "ej-fra.txt"
             m4a = tmppath / "ej-fra.m4a"
             wav = tmppath / "ej-fra.wav"
             # Under most circumstances, align can take a .m4a input file, but not
-            # in CI. Since it's not a hard requirement, so just convert to .wav.
+            # in CI. It's not a hard requirement, so just convert to .wav.
             subprocess.run(["ffmpeg", "-i", m4a, wav], capture_output=True)
             # os.system("ls -la " + tmpdir)
             textgrid = tmppath / "ej-fra-16000.TextGrid"

@@ -20,7 +20,7 @@ from urllib.request import Request, urlopen
 from typer.testing import CliRunner
 
 from ..classes import Segment
-from ..cli import app, complete_path
+from ..cli import app
 
 
 class CLITest(TestCase):
@@ -112,9 +112,6 @@ class CLITest(TestCase):
 
 
 class MiscTests(TestCase):
-    def test_shell_complete(self):
-        self.assertEqual(complete_path(None, None, None), [])
-
     def test_segment(self):
         segment = Segment("text", 500, 700, 0.42)
         self.assertEqual(len(segment), 200)

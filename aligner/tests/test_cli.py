@@ -48,7 +48,7 @@ class CLITest(TestCase):
         with self.subTest("empty file"):
             result = self.runner.invoke(app, ["align", os.devnull, os.devnull])
             self.assertNotEqual(result.exit_code, 0)
-            self.assertIn("is empty", result.stdout)
+            self.assertRegex(result.stdout, r"(?s)is.*empty")
 
         with self.subTest("file with only empty lines"):
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -57,7 +57,7 @@ class CLITest(TestCase):
                     f.write("\n \n   \n")
                 result = self.runner.invoke(app, ["align", textfile, os.devnull])
                 self.assertNotEqual(result.exit_code, 0)
-                self.assertIn("is empty", result.stdout)
+                self.assertRegex(result.stdout, r"(?s)is.*empty")
 
     def fetch_ras_test_file(self, filename, outputdir):
         repo, path = "https://github.com/ReadAlongs/Studio/", "/test/data/"

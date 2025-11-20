@@ -60,7 +60,7 @@ class CLITest(TestCase):
                 self.assertRegex(result.stdout, r"(?s)is.*empty")
 
     def fetch_ras_test_file(self, filename, outputdir):
-        repo, path = "https://github.com/ReadAlongs/Studio/", "/test/data/"
+        repo, path = "https://github.com/ReadAlongs/Studio/", "/tests/data/"
         request = Request(repo + "raw/refs/heads/main" + path + filename)
         request.add_header("Referer", repo + "blob/main" + path + filename)
         response = urlopen(request, timeout=5)

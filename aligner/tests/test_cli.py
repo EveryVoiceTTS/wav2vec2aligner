@@ -22,6 +22,8 @@ from typer.testing import CliRunner
 from ..classes import Segment
 from ..cli import app
 
+VERBOSE_OVERRIDE = bool(os.environ.get("EVERYVOICE_VERBOSE_TESTS", False))
+
 
 class CLITest(TestCase):
     def setUp(self) -> None:
@@ -83,8 +85,12 @@ class CLITest(TestCase):
             wav = tmppath / "ej-fra.wav"
             # Under most circumstances, align can take a .m4a input file, but not
             # in CI. It's not a hard requirement, so just convert to .wav.
-            subprocess.run(["ffmpeg", "-i", m4a, wav], capture_output=True)
-            # os.system("ls -la " + tmpdir)
+            result = subprocess.run(["ffmpeg", "-i", m4a, wav], capture_output=True)
+            if result.returncode != 0 or VERBOSE_OVERRIDE:
+                print("ffmpeg output:", result.stdout, result.stderr)
+                print("ffmpeg exit code:", result.returncode)
+                print(tmpdir)
+                os.system("ls -la " + tmpdir)
             textgrid = tmppath / "ej-fra-16000.TextGrid"
             wav_out = tmppath / "ej-fra-16000.wav"
 

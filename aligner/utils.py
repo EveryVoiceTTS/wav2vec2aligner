@@ -1,7 +1,5 @@
 import re
 
-from pympi.Praat import TextGrid
-
 
 class TextHash(dict):
     def __init__(self, sentence_list, transducer):
@@ -54,6 +52,8 @@ def read_text(text_path):
 
 
 def create_text_grid_from_segments(segments, seg_name, frame_ratio, sample_rate=16000):
+    from pympi.Praat import TextGrid
+
     xmax = (frame_ratio * segments[-1].end) / sample_rate
     tg = TextGrid(xmax=xmax)
     value_tier = tg.add_tier(seg_name)

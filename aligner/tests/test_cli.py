@@ -50,7 +50,7 @@ class CLITest(TestCase):
         with self.subTest("empty file"):
             result = self.runner.invoke(app, ["align", os.devnull, os.devnull])
             self.assertNotEqual(result.exit_code, 0)
-            self.assertRegex(result.stdout, r"(?s)is.*empty")
+            self.assertRegex(result.output, r"(?s)is.*empty")
 
         with self.subTest("file with only empty lines"):
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -59,7 +59,7 @@ class CLITest(TestCase):
                     f.write("\n \n   \n")
                 result = self.runner.invoke(app, ["align", textfile, os.devnull])
                 self.assertNotEqual(result.exit_code, 0)
-                self.assertRegex(result.stdout, r"(?s)is.*empty")
+                self.assertRegex(result.output, r"(?s)is.*empty")
 
     def fetch_ras_test_file(self, filename, outputdir):
         repo, path = "https://github.com/ReadAlongs/Studio/", "/tests/data/"
@@ -98,7 +98,7 @@ class CLITest(TestCase):
                 result = self.runner.invoke(app, ["align", str(txt), str(wav)])
                 if result.exit_code != 0:
                     os.system("ls -la " + tmpdir)
-                    print(result.stdout)
+                    print(result.output)
                 self.assertEqual(result.exit_code, 0)
                 self.assertTrue(textgrid.exists())
                 self.assertTrue(wav_out.exists())
@@ -108,7 +108,7 @@ class CLITest(TestCase):
                     app, ["extract", str(textgrid), str(wav_out), str(tmppath / "out")]
                 )
                 if result.exit_code != 0:
-                    print(result.stdout)
+                    print(result.output)
                 self.assertEqual(result.exit_code, 0)
                 self.assertTrue((tmppath / "out/metadata.psv").exists())
                 with open(txt, encoding="utf8") as txt_f:

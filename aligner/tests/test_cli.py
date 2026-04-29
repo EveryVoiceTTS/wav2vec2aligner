@@ -96,8 +96,8 @@ class CLITest(TestCase):
                     os.system("ls -la " + tmpdir)
                     print(result.output)
                 self.assertEqual(result.exit_code, 0)
-                self.assertTrue(textgrid.exists())
-                self.assertTrue(wav_out.exists())
+                assert textgrid.exists()
+                assert wav_out.exists()
 
             with self.subTest("ctc-segmenter extract"):
                 result = self.runner.invoke(
@@ -106,11 +106,11 @@ class CLITest(TestCase):
                 if result.exit_code != 0:
                     print(result.output)
                 self.assertEqual(result.exit_code, 0)
-                self.assertTrue((tmppath / "out/metadata.psv").exists())
+                assert (tmppath / "out/metadata.psv").exists()
                 with open(txt, encoding="utf8") as txt_f:
                     non_blank_line_count = sum(1 for line in txt_f if line.strip())
                 for i in range(non_blank_line_count):
-                    self.assertTrue((tmppath / f"out/wavs/segment{i}.wav"))
+                    assert (tmppath / f"out/wavs/segment{i}.wav").exists()
 
 
 class MiscTests(TestCase):

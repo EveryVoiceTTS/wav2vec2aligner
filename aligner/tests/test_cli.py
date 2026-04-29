@@ -1,10 +1,6 @@
 """
 Run wav2vec2aligner unit tests.
-How to run this test suite:
-If you installed wav2vec2aligner:
-    python -m unittest aligner.tests.test_cli
-If you installed everyvoice:
-    python -m unittest everyvoice.model.aligner.wav2vec2aligner.aligner.tests.test_cli
+How to run this test suite: pytest path/to/test_cli.py
 """
 
 import io

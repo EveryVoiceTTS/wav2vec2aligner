@@ -29,23 +29,23 @@ class CLITest(TestCase):
         for help in "-h", "--help":
             with self.subTest(help=help):
                 result = self.runner.invoke(app, [help])
-                self.assertEqual(result.exit_code, 0)
-                self.assertIn("align", result.stdout)
-                self.assertIn("extract", result.stdout)
+                assert result.exit_code == 0
+                assert "align" in result.stdout
+                assert "extract" in result.stdout
 
     def test_sub_help(self):
         for cmd in "align", "extract":
             for help in "-h", "--help":
                 with self.subTest(cmd=cmd, help=help):
                     result = self.runner.invoke(app, [cmd, help])
-                    self.assertEqual(result.exit_code, 0)
-                    self.assertIn("Usage:", result.stdout)
-                    self.assertIn(cmd, result.stdout)
+                    assert result.exit_code == 0
+                    assert "Usage:" in result.stdout
+                    assert cmd in result.stdout
 
     def test_align_empty_file(self):
         with self.subTest("empty file"):
             result = self.runner.invoke(app, ["align", os.devnull, os.devnull])
-            self.assertNotEqual(result.exit_code, 0)
+            assert result.exit_code != 0
             self.assertRegex(result.output, r"(?s)is.*empty")
 
         with self.subTest("file with only empty lines"):
@@ -54,7 +54,7 @@ class CLITest(TestCase):
                 with open(textfile, "w", encoding="utf8") as f:
                     f.write("\n \n   \n")
                 result = self.runner.invoke(app, ["align", textfile, os.devnull])
-                self.assertNotEqual(result.exit_code, 0)
+                assert result.exit_code != 0
                 self.assertRegex(result.output, r"(?s)is.*empty")
 
     def fetch_ras_test_file(self, filename, outputdir):
@@ -95,7 +95,7 @@ class CLITest(TestCase):
                 if result.exit_code != 0:
                     os.system("ls -la " + tmpdir)
                     print(result.output)
-                self.assertEqual(result.exit_code, 0)
+                assert result.exit_code == 0
                 assert textgrid.exists()
                 assert wav_out.exists()
 
@@ -105,7 +105,7 @@ class CLITest(TestCase):
                 )
                 if result.exit_code != 0:
                     print(result.output)
-                self.assertEqual(result.exit_code, 0)
+                assert result.exit_code == 0
                 assert (tmppath / "out/metadata.psv").exists()
                 with open(txt, encoding="utf8") as txt_f:
                     non_blank_line_count = sum(1 for line in txt_f if line.strip())
@@ -116,5 +116,5 @@ class CLITest(TestCase):
 class MiscTests(TestCase):
     def test_segment(self):
         segment = Segment("text", 500, 700, 0.42)
-        self.assertEqual(len(segment), 200)
-        self.assertEqual(repr(segment), "text (0.42): [ 500,  700)")
+        assert len(segment) == 200
+        assert repr(segment) == "text (0.42): [ 500,  700)"

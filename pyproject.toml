@@ -45,13 +45,14 @@ include = ["/aligner"]
 [project.optional-dependencies]
 dev = [
   "black~=24.3",
+  "coverage",
   "flake8>=4.0.1",
   "gitlint-core>=0.19.0",
   "isort>=5.10.1",
   "mypy>=1.8.0",
   "pre-commit>=3.2.0",
   "pytest",
-  "coverage",
+  "pytest-subtests",
 ]
 
 [project.urls]

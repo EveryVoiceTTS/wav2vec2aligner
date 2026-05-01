@@ -5,14 +5,15 @@ How to run this test suite: pytest path/to/test_cli.py
 
 import io
 import os
+import re
 import subprocess
 import tempfile
 from contextlib import redirect_stderr
 from pathlib import Path
-from unittest import SkipTest, TestCase
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
+from pytest import fixture, skip
 from typer.testing import CliRunner
 
 from ..classes import Segment
@@ -21,41 +22,43 @@ from ..cli import app
 VERBOSE_OVERRIDE = bool(os.environ.get("EVERYVOICE_VERBOSE_TESTS", False))
 
 
-class CLITest(TestCase):
-    def setUp(self) -> None:
-        self.runner = CliRunner()
+@fixture
+def runner() -> CliRunner:
+    return CliRunner()
 
-    def test_main_help(self):
+
+class TestCLI:
+    def test_main_help(self, runner, subtests):
         for help in "-h", "--help":
-            with self.subTest(help=help):
-                result = self.runner.invoke(app, [help])
+            with subtests.test(help=help):
+                result = runner.invoke(app, [help])
                 assert result.exit_code == 0
                 assert "align" in result.stdout
                 assert "extract" in result.stdout
 
-    def test_sub_help(self):
+    def test_sub_help(self, runner, subtests):
         for cmd in "align", "extract":
             for help in "-h", "--help":
-                with self.subTest(cmd=cmd, help=help):
-                    result = self.runner.invoke(app, [cmd, help])
+                with subtests.test(cmd=cmd, help=help):
+                    result = runner.invoke(app, [cmd, help])
                     assert result.exit_code == 0
                     assert "Usage:" in result.stdout
                     assert cmd in result.stdout
 
-    def test_align_empty_file(self):
-        with self.subTest("empty file"):
-            result = self.runner.invoke(app, ["align", os.devnull, os.devnull])
+    def test_align_empty_file(self, runner, subtests):
+        with subtests.test("empty file"):
+            result = runner.invoke(app, ["align", os.devnull, os.devnull])
             assert result.exit_code != 0
-            self.assertRegex(result.output, r"(?s)is.*empty")
+            assert re.search(r"(?s)is.*empty", result.output)
 
-        with self.subTest("file with only empty lines"):
+        with subtests.test("file with only empty lines"):
             with tempfile.TemporaryDirectory() as tmpdir:
                 textfile = os.path.join(tmpdir, "emptylines.txt")
                 with open(textfile, "w", encoding="utf8") as f:
                     f.write("\n \n   \n")
-                result = self.runner.invoke(app, ["align", textfile, os.devnull])
+                result = runner.invoke(app, ["align", textfile, os.devnull])
                 assert result.exit_code != 0
-                self.assertRegex(result.output, r"(?s)is.*empty")
+                assert re.search(r"(?s)is.*empty", result.output)
 
     def fetch_ras_test_file(self, filename, outputdir):
         repo, path = "https://github.com/ReadAlongs/Studio/", "/tests/data/"
@@ -65,7 +68,7 @@ class CLITest(TestCase):
         with open(os.path.join(outputdir, filename), "wb") as f:
             f.write(response.read())
 
-    def test_align_something(self):
+    def test_align_something(self, runner, subtests):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
             try:
@@ -73,7 +76,7 @@ class CLITest(TestCase):
                     self.fetch_ras_test_file("ej-fra.txt", tmpdir)
                     self.fetch_ras_test_file("ej-fra.m4a", tmpdir)
             except URLError as e:  # pragma: no cover
-                raise SkipTest(
+                raise skip(
                     f"Can't fetch test data: {e}; skipping the test that depends on the Internet."
                 )
             txt = tmppath / "ej-fra.txt"
@@ -90,8 +93,8 @@ class CLITest(TestCase):
             textgrid = tmppath / "ej-fra-16000.TextGrid"
             wav_out = tmppath / "ej-fra-16000.wav"
 
-            with self.subTest("ctc-segmenter align"):
-                result = self.runner.invoke(app, ["align", str(txt), str(wav)])
+            with subtests.test("ctc-segmenter align"):
+                result = runner.invoke(app, ["align", str(txt), str(wav)])
                 if result.exit_code != 0:
                     os.system("ls -la " + tmpdir)
                     print(result.output)
@@ -99,8 +102,8 @@ class CLITest(TestCase):
                 assert textgrid.exists()
                 assert wav_out.exists()
 
-            with self.subTest("ctc-segmenter extract"):
-                result = self.runner.invoke(
+            with subtests.test("ctc-segmenter extract"):
+                result = runner.invoke(
                     app, ["extract", str(textgrid), str(wav_out), str(tmppath / "out")]
                 )
                 if result.exit_code != 0:
@@ -113,7 +116,7 @@ class CLITest(TestCase):
                     assert (tmppath / f"out/wavs/segment{i}.wav").exists()
 
 
-class MiscTests(TestCase):
+class TestMisc:
     def test_segment(self):
         segment = Segment("text", 500, 700, 0.42)
         assert len(segment) == 200

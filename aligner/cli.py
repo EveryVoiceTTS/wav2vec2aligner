@@ -22,6 +22,7 @@ app = typer.Typer(
     pretty_exceptions_show_locals=False,
     context_settings={"help_option_names": ["-h", "--help"]},
     rich_markup_mode="markdown",
+    no_args_is_help=True,
     help=CLI_LONG_HELP,
 )
 
@@ -39,6 +40,7 @@ EXTRACT_SEGMENTS_SHORT_HELP = "Extract the intervals from a TextGrid"
 
 @app.command(
     name="extract",
+    no_args_is_help=True,
     help=EXTRACT_SEGMENTS_LONG_HELP,
     short_help=EXTRACT_SEGMENTS_SHORT_HELP,
 )
@@ -108,7 +110,10 @@ ALIGN_SINGLE_SHORT_HELP = "Align a long audio file with some text"
 
 
 @app.command(
-    name="align", help=ALIGN_SINGLE_LONG_HELP, short_help=ALIGN_SINGLE_SHORT_HELP
+    name="align",
+    no_args_is_help=True,
+    help=ALIGN_SINGLE_LONG_HELP,
+    short_help=ALIGN_SINGLE_SHORT_HELP,
 )
 def align_single(
     text_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False),

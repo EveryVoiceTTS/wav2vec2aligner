@@ -125,7 +125,7 @@ def align_single(
     sentence_padding: int = typer.Option(
         0, help="How many frames to pad around sentences (additive with word-padding)."
     ),
-    debug: bool = typer.Option(False, help="Print debug statements"),
+    debug: bool = typer.Option(False, "--debug", "-D", help="Print debug statements"),
 ):
     # Do fast error checking before loading expensive dependencies
     sentence_list = read_text(text_path)

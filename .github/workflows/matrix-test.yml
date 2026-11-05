@@ -1,0 +1,16 @@
+name: Matrix test
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  matrix-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.3.3 # Immutable
+      - uses: FedericoCarboni/setup-ffmpeg@37062fbf7149fc5578d6c57e08aed62458b375d6 # @v3.1, with tool cache
+      - run: uvx --with "virtualenv<20.31" hatch'<1.15' test -a

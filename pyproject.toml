@@ -57,6 +57,9 @@ dev = [
 ]
 test=["pytest", "pytest-subtests"]
 
+[dependency-groups]
+dev = ["ctc-segmentation-aligner[dev]"]
+
 [tool.hatch.envs.hatch-test]
 default-args = ["aligner/tests"]
 features = ["test"]

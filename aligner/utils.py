@@ -1,5 +1,7 @@
 import re
 
+from .classes import Segment
+
 
 class TextHash(dict):
     def __init__(self, sentence_list, transducer):
@@ -11,7 +13,11 @@ class TextHash(dict):
                 continue
             words = sentence.split()
             for j, word in enumerate(words):
-                data[f"s{i}w{j}"] = {"text": transducer(word)}
+                transduced = transducer(word)
+                # Words made only of unsupported characters (e.g. a lone "-")
+                # have nothing to align
+                if transduced.output_string:
+                    data[f"s{i}w{j}"] = {"text": transduced}
         super().__init__(data)
 
 
@@ -34,9 +40,16 @@ def create_transducer(text, labels_dictionary, debug=False):
             print(
                 f"Found {k} which is not modelled by Wav2Vec2; skipping for alignment"
             )
+    # A single rule matching runs of unsupported characters: one rule per
+    # character breaks g2p's index tracking on runs like "..." and leaves
+    # characters behind that the model has no label for.
+    rules = []
+    if fallback_mapping:
+        char_class = "".join(re.escape(k) for k in fallback_mapping)
+        rules.append({"in": f"[{char_class}]+", "out": ""})
     punctuation_transducer = Transducer(
         Mapping(
-            rules=[{"in": re.escape(k), "out": v} for k, v in fallback_mapping.items()],
+            rules=rules,
             in_lang="und-ascii",
             out_lang="uroman",
             case_sensitive=False,
@@ -64,3 +77,33 @@ def create_text_grid_from_segments(segments, seg_name, frame_ratio, sample_rate=
         value_tier.add_interval(start, end, segment.label)
         score_tier.add_interval(start, end, "{:.2f}".format(segment.score))
     return tg
+
+
+def pad_sentences_with_silence(sentences, num_frames, max_pad_frames):
+    """Extend each sentence into the unaligned audio around it.
+
+    Each side gets up to max_pad_frames of padding. A gap between two sentences
+    is shared equally so they never overlap, and the first and last sentences
+    can use the whole gap to the start and end of the audio.
+    """
+    padded = []
+    for i, sentence in enumerate(sentences):
+        if i == 0:
+            room_before = sentence.start
+        else:
+            room_before = (sentence.start - sentences[i - 1].end) // 2
+        if i == len(sentences) - 1:
+            room_after = num_frames - sentence.end
+        else:
+            room_after = (sentences[i + 1].start - sentence.end) // 2
+        pad_before = min(max_pad_frames, max(0, room_before))
+        pad_after = min(max_pad_frames, max(0, room_after))
+        padded.append(
+            Segment(
+                sentence.label,
+                sentence.start - pad_before,
+                sentence.end + pad_after,
+                sentence.score,
+            )
+        )
+    return padded

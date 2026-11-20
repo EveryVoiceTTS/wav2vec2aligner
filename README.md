@@ -13,6 +13,10 @@ Create a conda env, then `pip install -e .`
 
 ## Usage
 
-`ctc-segmenter align-single sample.txt sample.wav` which will output a [Praat TextGrid](https://www.fon.hum.uva.nl/praat/) with the word, and sentence level alignments.
+`ctc-segmenter align sample.txt sample.wav` which will output a [Praat TextGrid](https://www.fon.hum.uva.nl/praat/) with the word, and sentence level alignments.
 
-You can then adjust the Praat TextGrid as necessary and run `ctc-segmenter extract-segments-from-textgrid sample.TextGrid sample.wav outdir` which will extract the segments and write them to the `outdir` directory along with a metadata file.
+You can then adjust the Praat TextGrid as necessary and run `ctc-segmenter extract sample.TextGrid sample.wav outdir` which will extract the segments and write them to the `outdir` directory along with a metadata file.
+
+Each line of `sample.txt` becomes one segment, so if your segments are too long, split long lines in the text file into several lines and run `align` again.
+
+By default, `align` extends each segment into the silence around it by up to 0.5 seconds on each side, without overlapping neighbouring segments. Change this with `--sentence-silence` (in seconds; `0` turns it off).

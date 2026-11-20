@@ -7,6 +7,7 @@ from .utils import (
     TextHash,
     create_text_grid_from_segments,
     create_transducer,
+    pad_sentences_with_silence,
     read_text,
 )
 
@@ -33,6 +34,8 @@ EXTRACT_SEGMENTS_LONG_HELP = """
     # Segmentation help
 
     This command will take the alignment from the `align` command and extract it into multiple utterances in the format required for training a TTS system.
+
+    Each line of the text file given to `align` becomes one utterance, so to get shorter utterances, split long lines in your text file into several lines before running `align`.
     """
 
 EXTRACT_SEGMENTS_SHORT_HELP = "Extract the intervals from a TextGrid"
@@ -102,7 +105,7 @@ def extract_segments_from_textgrid(
 ALIGN_SINGLE_LONG_HELP = """
     # Segmentation help
 
-    This command will align a long audio file with some text. Your text should be separated so that each sentence/utterance is on a new line in the text file.
+    This command will align a long audio file with some text. Your text should be separated so that each sentence/utterance is on a new line in the text file. Each line will become one audio clip when you run `extract`, so split long lines if you want shorter clips.
     This command should work on most languages and you should run it before running the new project or preprocessing steps.
     This command will create a Praat TextGrid file. You must install Praat (https://www.fon.hum.uva.nl/praat/) if you want to inspect the alignments.
     """
@@ -124,6 +127,11 @@ def align_single(
     word_padding: int = typer.Option(0, help="How many frames to pad around words."),
     sentence_padding: int = typer.Option(
         0, help="How many frames to pad around sentences (additive with word-padding)."
+    ),
+    sentence_silence: float = typer.Option(
+        0.5,
+        min=0,
+        help="Add up to this many seconds of the surrounding silence before and after each sentence, without overlapping neighbouring sentences.",
     ),
     debug: bool = typer.Option(False, "--debug", "-D", help="Print debug statements"),
 ):
@@ -157,14 +165,19 @@ def align_single(
     print("processing text")
     transducer = create_transducer("".join(sentence_list), labels, debug)
     text_hash = TextHash(sentence_list, transducer)
-    print("performing alignment")
+    from rich.console import Console
+
     from .heavy import align_speech_file
 
-    characters, words, sentences, num_frames = align_speech_file(
-        wav, text_hash, model, labels, word_padding, sentence_padding
-    )
+    with Console().status("performing alignment"):
+        characters, words, sentences, num_frames = align_speech_file(
+            wav, text_hash, model, labels, word_padding, sentence_padding
+        )
+    print("performing alignment: done")
     print("creating textgrid")
     waveform_to_frame_ratio = wav.size(1) / num_frames
+    max_pad_frames = int(sentence_silence * sample_rate / waveform_to_frame_ratio)
+    sentences = pad_sentences_with_silence(sentences, num_frames, max_pad_frames)
     tg = create_text_grid_from_segments(
         characters, "characters", waveform_to_frame_ratio, sample_rate=sample_rate
     )

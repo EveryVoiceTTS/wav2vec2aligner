@@ -15,6 +15,7 @@ from typer.testing import CliRunner
 
 from ..classes import Segment
 from ..cli import app
+from ..utils import TextHash, create_transducer, pad_sentences_with_silence
 
 
 @pytest.fixture(scope="class")
@@ -120,3 +121,23 @@ class TestMisc:
         segment = Segment("text", 500, 700, 0.42)
         assert len(segment) == 200
         assert repr(segment) == "text (0.42): [ 500,  700)"
+
+    def test_text_hash_removes_unsupported_characters(self):
+        labels = {c: i for i, c in enumerate("abcdefghijklmnopqrstuvwxyz'")}
+        sentences = ["Wait... what?!", "x - y"]
+        text_hash = TextHash(sentences, create_transducer("".join(sentences), labels))
+        words = {k: v["text"].output_string for k, v in text_hash.items() if "w" in k}
+        assert words == {"s0w0": "wait", "s0w1": "what", "s1w0": "x", "s1w2": "y"}
+
+    def test_pad_sentences_with_silence(self):
+        sentences = [Segment("a", 10, 20, 0.9), Segment("b", 26, 40, 0.8)]
+        padded = pad_sentences_with_silence(
+            sentences, num_frames=100, max_pad_frames=25
+        )
+        # Edge gaps bounded by the audio, shared gap of 6 frames split in half
+        assert [(s.start, s.end) for s in padded] == [(0, 23), (23, 65)]
+        assert [(s.label, s.score) for s in padded] == [("a", 0.9), ("b", 0.8)]
+        padded = pad_sentences_with_silence(sentences, num_frames=100, max_pad_frames=2)
+        assert [(s.start, s.end) for s in padded] == [(8, 22), (24, 42)]
+        padded = pad_sentences_with_silence(sentences, num_frames=100, max_pad_frames=0)
+        assert [(s.start, s.end) for s in padded] == [(10, 20), (26, 40)]
